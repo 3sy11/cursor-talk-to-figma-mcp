@@ -2832,7 +2832,13 @@ server.tool(
         content: [
           {
             type: "text",
-            text: `The variable has been created ${JSON.stringify(result, null, 2)} now you must 'set_variable_value' to assign the proper value to the variable. The variable will not be usable until it has a value assigned to it.`
+            text: `The variable has been created ${JSON.stringify(result, null, 2)} now you must use one of the specialized variable setting tools to assign the proper value:
+- set_color_variable: For COLOR variables (r, g, b, a values in 0-1 range)
+- set_float_variable: For FLOAT variables (numeric values)
+- set_string_variable: For STRING variables (text values)
+- set_boolean_variable: For BOOLEAN variables (true/false values)
+
+The variable will not be usable until it has a value assigned to it.`
           }
         ]
       };
@@ -2851,7 +2857,7 @@ server.tool(
 
 server.tool(
   "set_variable_value",
-  "Set the value of a variable in the Figma document. Returns the updated variable object.",
+  "DEPRECATED: Set the value of a variable in the Figma document. Use the specialized tools instead: set_color_variable, set_float_variable, set_string_variable, or set_boolean_variable for better type safety.",
   {
     variableId: z.string().describe("The ID of the variable to update"),
     modeId: z.string().optional().describe("Optional mode ID for the variable, if applicable"),
@@ -2905,6 +2911,178 @@ server.tool(
           {
             type: "text",
             text: `Error setting variable value: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ]
+      };
+    }
+  }
+);
+
+// 专门的颜色变量设置工具
+server.tool(
+  "set_color_variable",
+  "Set a COLOR variable value in Figma. Accepts RGB values in 0-1 range.",
+  {
+    variableId: z.string().describe("The ID of the COLOR variable to update"),
+    modeId: z.string().optional().describe("Optional mode ID for the variable, if applicable"),
+    r: z.number().min(0).max(1).describe("Red component (0-1)"),
+    g: z.number().min(0).max(1).describe("Green component (0-1)"),
+    b: z.number().min(0).max(1).describe("Blue component (0-1)"),
+    a: z.number().min(0).max(1).optional().default(1).describe("Alpha component (0-1), defaults to 1"),
+    variableReferenceId: z.string().optional().describe("Optional reference to another variable")
+  },
+  async ({ variableId, modeId, r, g, b, a, variableReferenceId }) => {
+    try {
+      const colorValue = { r, g, b, a };
+      console.log("Setting COLOR variable:", variableId, "with value:", colorValue);
+      
+      const result = await sendCommandToFigma("set_color_variable", {
+        variableId,
+        modeId,
+        value: colorValue,
+        variableReferenceId
+      });
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result)
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error setting color variable: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ]
+      };
+    }
+  }
+);
+
+// 专门的数值变量设置工具
+server.tool(
+  "set_float_variable",
+  "Set a FLOAT variable value in Figma.",
+  {
+    variableId: z.string().describe("The ID of the FLOAT variable to update"),
+    modeId: z.string().optional().describe("Optional mode ID for the variable, if applicable"),
+    value: z.number().describe("The numeric value to set"),
+    variableReferenceId: z.string().optional().describe("Optional reference to another variable")
+  },
+  async ({ variableId, modeId, value, variableReferenceId }) => {
+    try {
+      console.log("Setting FLOAT variable:", variableId, "with value:", value);
+      
+      const result = await sendCommandToFigma("set_float_variable", {
+        variableId,
+        modeId,
+        value,
+        variableReferenceId
+      });
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result)
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error setting float variable: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ]
+      };
+    }
+  }
+);
+
+// 专门的字符串变量设置工具
+server.tool(
+  "set_string_variable",
+  "Set a STRING variable value in Figma.",
+  {
+    variableId: z.string().describe("The ID of the STRING variable to update"),
+    modeId: z.string().optional().describe("Optional mode ID for the variable, if applicable"),
+    value: z.string().describe("The string value to set"),
+    variableReferenceId: z.string().optional().describe("Optional reference to another variable")
+  },
+  async ({ variableId, modeId, value, variableReferenceId }) => {
+    try {
+      console.log("Setting STRING variable:", variableId, "with value:", value);
+      
+      const result = await sendCommandToFigma("set_string_variable", {
+        variableId,
+        modeId,
+        value,
+        variableReferenceId
+      });
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result)
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error setting string variable: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ]
+      };
+    }
+  }
+);
+
+// 专门的布尔变量设置工具
+server.tool(
+  "set_boolean_variable",
+  "Set a BOOLEAN variable value in Figma.",
+  {
+    variableId: z.string().describe("The ID of the BOOLEAN variable to update"),
+    modeId: z.string().optional().describe("Optional mode ID for the variable, if applicable"),
+    value: z.boolean().describe("The boolean value to set (true or false)"),
+    variableReferenceId: z.string().optional().describe("Optional reference to another variable")
+  },
+  async ({ variableId, modeId, value, variableReferenceId }) => {
+    try {
+      console.log("Setting BOOLEAN variable:", variableId, "with value:", value);
+      
+      const result = await sendCommandToFigma("set_boolean_variable", {
+        variableId,
+        modeId,
+        value,
+        variableReferenceId
+      });
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result)
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error setting boolean variable: ${error instanceof Error ? error.message : String(error)}`
           }
         ]
       };
@@ -2992,6 +3170,10 @@ type FigmaCommand =
   | "set_node_paints"
   | "create_variable"
   | "set_variable_value"
+  | "set_color_variable"
+  | "set_float_variable" 
+  | "set_string_variable"
+  | "set_boolean_variable"
   | "set_focus"
   | "set_selections";
 
@@ -3189,6 +3371,30 @@ type CommandParams = {
     valueType: "FLOAT" | "STRING" | "BOOLEAN" | "COLOR";
     value?: any; // Value can be of any type depending on the variable type
     variableReferenceId?: string; // Optional reference to another variable
+  };
+  set_color_variable: {
+    variableId: string;
+    modeId?: string;
+    value: { r: number; g: number; b: number; a: number };
+    variableReferenceId?: string;
+  };
+  set_float_variable: {
+    variableId: string;
+    modeId?: string;
+    value: number;
+    variableReferenceId?: string;
+  };
+  set_string_variable: {
+    variableId: string;
+    modeId?: string;
+    value: string;
+    variableReferenceId?: string;
+  };
+  set_boolean_variable: {
+    variableId: string;
+    modeId?: string;
+    value: boolean;
+    variableReferenceId?: string;
   };
 };
 

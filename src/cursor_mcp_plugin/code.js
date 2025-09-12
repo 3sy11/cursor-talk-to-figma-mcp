@@ -241,6 +241,14 @@ async function handleCommand(command, params) {
       return await createVariable(params);
     case "set_variable_value":
       return await setVariableValue(params);
+    case "set_color_variable":
+      return await setColorVariable(params);
+    case "set_float_variable":
+      return await setFloatVariable(params);
+    case "set_string_variable":
+      return await setStringVariable(params);
+    case "set_boolean_variable":
+      return await setBooleanVariable(params);
     case "list_collections":
       return await listCollections();
     case "set_node_paints":
@@ -1540,6 +1548,170 @@ async function setVariableValue(params) {
     throw new Error("Unsupported valueType");
   }
   return { success: true, variableId, mode, value };
+}
+
+// --- 专门的颜色变量设置函数 ---
+async function setColorVariable(params) {
+  const { variableId, modeId, value, variableReferenceId } = params || {};
+  if (!variableId) {
+    throw new Error("Missing variableId parameter");
+  }
+  if (!figma.variables || !figma.variables.getVariableByIdAsync) {
+    throw new Error("Figma Variables API not available");
+  }
+  
+  const variable = await figma.variables.getVariableByIdAsync(variableId);
+  if (!variable) throw new Error(`Variable not found: ${variableId}`);
+  
+  // 验证变量类型
+  if (variable.resolvedType !== "COLOR") {
+    throw new Error(`Variable ${variableId} is not a COLOR variable (actual type: ${variable.resolvedType})`);
+  }
+
+  let mode = modeId || Object.keys(variable.valuesByMode)[0];
+
+  // If variableReferenceId is provided, set value as a reference to another variable
+  if (variableReferenceId) {
+    const refVariable = await figma.variables.getVariableByIdAsync(variableReferenceId);
+    if (!refVariable) throw new Error(`Reference variable not found: ${variableReferenceId}`);
+    if (refVariable.resolvedType !== "COLOR") {
+      throw new Error(`Reference variable ${variableReferenceId} is not a COLOR variable`);
+    }
+    variable.setValueForMode(mode, { type: "VARIABLE_ALIAS", id: variableReferenceId });
+    return { success: true, variableId, mode, value: { type: "VARIABLE_ALIAS", id: variableReferenceId } };
+  }
+
+  // 验证颜色值格式
+  if (!value || typeof value !== "object" || 
+      value.r === undefined || value.g === undefined || value.b === undefined) {
+    throw new Error("Invalid color value - must be an object with r, g, b properties. Received: " + JSON.stringify(value));
+  }
+
+  const colorValue = {
+    r: Number(value.r),
+    g: Number(value.g),
+    b: Number(value.b),
+    a: Number(value.a) || 1
+  };
+
+  console.log("Setting COLOR variable:", variableId, "with value:", colorValue);
+  variable.setValueForMode(mode, colorValue);
+  return { success: true, variableId, mode, value: colorValue };
+}
+
+// --- 专门的数值变量设置函数 ---
+async function setFloatVariable(params) {
+  const { variableId, modeId, value, variableReferenceId } = params || {};
+  if (!variableId) {
+    throw new Error("Missing variableId parameter");
+  }
+  if (!figma.variables || !figma.variables.getVariableByIdAsync) {
+    throw new Error("Figma Variables API not available");
+  }
+  
+  const variable = await figma.variables.getVariableByIdAsync(variableId);
+  if (!variable) throw new Error(`Variable not found: ${variableId}`);
+  
+  // 验证变量类型
+  if (variable.resolvedType !== "FLOAT") {
+    throw new Error(`Variable ${variableId} is not a FLOAT variable (actual type: ${variable.resolvedType})`);
+  }
+
+  let mode = modeId || Object.keys(variable.valuesByMode)[0];
+
+  // If variableReferenceId is provided, set value as a reference to another variable
+  if (variableReferenceId) {
+    const refVariable = await figma.variables.getVariableByIdAsync(variableReferenceId);
+    if (!refVariable) throw new Error(`Reference variable not found: ${variableReferenceId}`);
+    if (refVariable.resolvedType !== "FLOAT") {
+      throw new Error(`Reference variable ${variableReferenceId} is not a FLOAT variable`);
+    }
+    variable.setValueForMode(mode, { type: "VARIABLE_ALIAS", id: variableReferenceId });
+    return { success: true, variableId, mode, value: { type: "VARIABLE_ALIAS", id: variableReferenceId } };
+  }
+
+  const numericValue = Number(value);
+  if (isNaN(numericValue)) {
+    throw new Error(`Invalid numeric value: ${value}`);
+  }
+
+  console.log("Setting FLOAT variable:", variableId, "with value:", numericValue);
+  variable.setValueForMode(mode, numericValue);
+  return { success: true, variableId, mode, value: numericValue };
+}
+
+// --- 专门的字符串变量设置函数 ---
+async function setStringVariable(params) {
+  const { variableId, modeId, value, variableReferenceId } = params || {};
+  if (!variableId) {
+    throw new Error("Missing variableId parameter");
+  }
+  if (!figma.variables || !figma.variables.getVariableByIdAsync) {
+    throw new Error("Figma Variables API not available");
+  }
+  
+  const variable = await figma.variables.getVariableByIdAsync(variableId);
+  if (!variable) throw new Error(`Variable not found: ${variableId}`);
+  
+  // 验证变量类型
+  if (variable.resolvedType !== "STRING") {
+    throw new Error(`Variable ${variableId} is not a STRING variable (actual type: ${variable.resolvedType})`);
+  }
+
+  let mode = modeId || Object.keys(variable.valuesByMode)[0];
+
+  // If variableReferenceId is provided, set value as a reference to another variable
+  if (variableReferenceId) {
+    const refVariable = await figma.variables.getVariableByIdAsync(variableReferenceId);
+    if (!refVariable) throw new Error(`Reference variable not found: ${variableReferenceId}`);
+    if (refVariable.resolvedType !== "STRING") {
+      throw new Error(`Reference variable ${variableReferenceId} is not a STRING variable`);
+    }
+    variable.setValueForMode(mode, { type: "VARIABLE_ALIAS", id: variableReferenceId });
+    return { success: true, variableId, mode, value: { type: "VARIABLE_ALIAS", id: variableReferenceId } };
+  }
+
+  const stringValue = String(value);
+  console.log("Setting STRING variable:", variableId, "with value:", stringValue);
+  variable.setValueForMode(mode, stringValue);
+  return { success: true, variableId, mode, value: stringValue };
+}
+
+// --- 专门的布尔变量设置函数 ---
+async function setBooleanVariable(params) {
+  const { variableId, modeId, value, variableReferenceId } = params || {};
+  if (!variableId) {
+    throw new Error("Missing variableId parameter");
+  }
+  if (!figma.variables || !figma.variables.getVariableByIdAsync) {
+    throw new Error("Figma Variables API not available");
+  }
+  
+  const variable = await figma.variables.getVariableByIdAsync(variableId);
+  if (!variable) throw new Error(`Variable not found: ${variableId}`);
+  
+  // 验证变量类型
+  if (variable.resolvedType !== "BOOLEAN") {
+    throw new Error(`Variable ${variableId} is not a BOOLEAN variable (actual type: ${variable.resolvedType})`);
+  }
+
+  let mode = modeId || Object.keys(variable.valuesByMode)[0];
+
+  // If variableReferenceId is provided, set value as a reference to another variable
+  if (variableReferenceId) {
+    const refVariable = await figma.variables.getVariableByIdAsync(variableReferenceId);
+    if (!refVariable) throw new Error(`Reference variable not found: ${variableReferenceId}`);
+    if (refVariable.resolvedType !== "BOOLEAN") {
+      throw new Error(`Reference variable ${variableReferenceId} is not a BOOLEAN variable`);
+    }
+    variable.setValueForMode(mode, { type: "VARIABLE_ALIAS", id: variableReferenceId });
+    return { success: true, variableId, mode, value: { type: "VARIABLE_ALIAS", id: variableReferenceId } };
+  }
+
+  const booleanValue = Boolean(value);
+  console.log("Setting BOOLEAN variable:", variableId, "with value:", booleanValue);
+  variable.setValueForMode(mode, booleanValue);
+  return { success: true, variableId, mode, value: booleanValue };
 }
 
 // --- setNodePaints: Set fills or strokes on a node ---
