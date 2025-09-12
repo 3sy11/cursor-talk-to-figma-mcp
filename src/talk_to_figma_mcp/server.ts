@@ -2855,27 +2855,34 @@ server.tool(
   {
     variableId: z.string().describe("The ID of the variable to update"),
     modeId: z.string().optional().describe("Optional mode ID for the variable, if applicable"),
-    value: z.object({
-      r: z.number().optional(),
-      g: z.number().optional(),
-      b: z.number().optional(),
-      a: z.number().optional()
-    }).optional().describe("The value for the variable"),
+    value: z.union([
+      z.string().describe("String value for STRING type variables"),
+      z.number().describe("Number value for FLOAT type variables"),
+      z.boolean().describe("Boolean value for BOOLEAN type variables"),
+      z.object({
+        r: z.number().optional(),
+        g: z.number().optional(),
+        b: z.number().optional(),
+        a: z.number().optional()
+      }).describe("Color object for COLOR type variables")
+    ]).optional().describe("The value for the variable"),
     valueType: z.enum(["FLOAT", "STRING", "BOOLEAN", "COLOR"]).describe("The type of the value to set"),
     variableReferenceId: z.string().optional().describe("Optional reference to another variable")
   },
   async ({ variableId, modeId, value, valueType, variableReferenceId }) => {
     try {
       console.log("value", value);
-      const formattedValue = valueType === "COLOR" && value
-        ? {
-            r: value.r || 0,
-            g: value.g || 0,
-            b: value.b || 0,
-            a: value.a || 1
-          }
-        : value;
-
+      let formattedValue = value;
+      if (valueType === "COLOR" && value && typeof value === "object") {
+        formattedValue = {
+          r: value.r || 0,
+          g: value.g || 0,
+          b: value.b || 0,
+          a: value.a || 1
+        };
+      }
+      // 对于 STRING, FLOAT, BOOLEAN 类型，直接使用原始值
+      // Figma API 会自动处理类型转换
       const result = await sendCommandToFigma("set_variable_value", {
         variableId,
         modeId,
