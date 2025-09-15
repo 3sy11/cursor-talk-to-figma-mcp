@@ -249,6 +249,10 @@ async function handleCommand(command, params) {
       return await setStringVariable(params);
     case "set_boolean_variable":
       return await setBooleanVariable(params);
+    case "bind_node_variable":
+      return await bindNodeVariable(params);
+    case "unbind_node_variable":
+      return await unbindNodeVariable(params);
     case "list_collections":
       return await listCollections();
     case "set_node_paints":
@@ -1712,6 +1716,210 @@ async function setBooleanVariable(params) {
   console.log("Setting BOOLEAN variable:", variableId, "with value:", booleanValue);
   variable.setValueForMode(mode, booleanValue);
   return { success: true, variableId, mode, value: booleanValue };
+}
+
+// --- 通用节点变量绑定函数 ---
+async function bindNodeVariable(params) {
+  const { nodeId, property, variableId, modeId } = params || {};
+  
+  // 参数验证
+  if (!nodeId) {
+    throw new Error("Missing nodeId parameter");
+  }
+  if (!property) {
+    throw new Error("Missing property parameter");
+  }
+  if (!variableId) {
+    throw new Error("Missing variableId parameter");
+  }
+  
+  // 检查Variables API可用性
+  if (!figma.variables || !figma.variables.getVariableByIdAsync) {
+    throw new Error("Figma Variables API not available");
+  }
+  
+  try {
+    // 获取节点
+    const node = await figma.getNodeByIdAsync(nodeId);
+    if (!node) {
+      throw new Error(`Node not found: ${nodeId}`);
+    }
+    
+    // 获取变量
+    const variable = await figma.variables.getVariableByIdAsync(variableId);
+    if (!variable) {
+      throw new Error(`Variable not found: ${variableId}`);
+    }
+    
+    // 验证节点是否支持该属性
+    if (!(property in node)) {
+      throw new Error(`Node ${nodeId} (type: ${node.type}) does not support property: ${property}`);
+    }
+    
+    // 验证变量类型与属性的兼容性
+    const compatibilityCheck = validateVariablePropertyCompatibility(variable.resolvedType, property);
+    if (!compatibilityCheck.compatible) {
+      throw new Error(`Variable type ${variable.resolvedType} is not compatible with property ${property}: ${compatibilityCheck.reason}`);
+    }
+    
+    // 对于文本属性，需要确保节点是文本节点
+    const textProperties = ["fontSize", "fontWeight", "lineHeight", "letterSpacing", 
+                           "paragraphSpacing", "paragraphIndent", "fontFamily", "fontStyle"];
+    if (textProperties.includes(property) && node.type !== "TEXT") {
+      throw new Error(`Property ${property} can only be applied to TEXT nodes. Node ${nodeId} is type: ${node.type}`);
+    }
+    
+    // 使用Figma官方API绑定变量
+    console.log(`Binding variable ${variableId} (${variable.resolvedType}) to ${property} on node ${nodeId} (${node.type})`);
+    
+    // 对于文本属性，可能需要先加载字体
+    if (textProperties.includes(property) && (property === "fontFamily" || property === "fontStyle")) {
+      // 获取当前字体信息以便加载
+      const currentFontName = node.fontName;
+      if (currentFontName && typeof currentFontName === 'object') {
+        await figma.loadFontAsync(currentFontName);
+      }
+      
+      // 如果是字体变量，还需要加载目标字体
+      if (property === "fontFamily" || property === "fontStyle") {
+        const variableValue = Object.values(variable.valuesByMode)[0];
+        if (variableValue && typeof variableValue === 'string') {
+          try {
+            if (property === "fontFamily") {
+              await figma.loadFontAsync({ family: variableValue, style: "Regular" });
+            }
+          } catch (fontError) {
+            console.warn(`Could not load font for variable value: ${variableValue}`, fontError);
+            // 继续执行，让Figma处理字体问题
+          }
+        }
+      }
+    }
+    
+    // 执行绑定
+    node.setBoundVariable(property, variable);
+    
+    console.log(`Successfully bound variable ${variableId} to ${property} on node ${nodeId}`);
+    
+    return { 
+      success: true, 
+      nodeId, 
+      property, 
+      variableId,
+      nodeName: node.name,
+      nodeType: node.type,
+      variableName: variable.name,
+      variableType: variable.resolvedType
+    };
+    
+  } catch (error) {
+    console.error("Error in bindNodeVariable:", error);
+    throw new Error(`Failed to bind variable: ${error.message}`);
+  }
+}
+
+// --- 解除节点变量绑定函数 ---
+async function unbindNodeVariable(params) {
+  const { nodeId, property } = params || {};
+  
+  // 参数验证
+  if (!nodeId) {
+    throw new Error("Missing nodeId parameter");
+  }
+  if (!property) {
+    throw new Error("Missing property parameter");
+  }
+  
+  try {
+    // 获取节点
+    const node = await figma.getNodeByIdAsync(nodeId);
+    if (!node) {
+      throw new Error(`Node not found: ${nodeId}`);
+    }
+    
+    // 验证节点是否支持该属性
+    if (!(property in node)) {
+      throw new Error(`Node ${nodeId} (type: ${node.type}) does not support property: ${property}`);
+    }
+    
+    // 检查是否有绑定的变量
+    const boundVariables = node.boundVariables;
+    if (!boundVariables || !boundVariables[property]) {
+      return {
+        success: true,
+        message: `No variable binding found for property ${property} on node ${nodeId}`,
+        nodeId,
+        property,
+        nodeName: node.name,
+        nodeType: node.type
+      };
+    }
+    
+    // 解除绑定（设置为null）
+    console.log(`Unbinding variable from ${property} on node ${nodeId}`);
+    node.setBoundVariable(property, null);
+    
+    console.log(`Successfully unbound variable from ${property} on node ${nodeId}`);
+    
+    return { 
+      success: true, 
+      nodeId, 
+      property,
+      nodeName: node.name,
+      nodeType: node.type,
+      message: `Unbound variable from ${property}`
+    };
+    
+  } catch (error) {
+    console.error("Error in unbindNodeVariable:", error);
+    throw new Error(`Failed to unbind variable: ${error.message}`);
+  }
+}
+
+// --- 变量类型与属性兼容性验证函数 ---
+function validateVariablePropertyCompatibility(variableType, property) {
+  const compatibility = {
+    // 数值类型属性
+    "FLOAT": [
+      "width", "height", "x", "y", "opacity", "rotation", "cornerRadius",
+      "fontSize", "fontWeight", "lineHeight", "letterSpacing", 
+      "paragraphSpacing", "paragraphIndent"
+    ],
+    // 字符串类型属性
+    "STRING": [
+      "fontFamily", "fontStyle"
+    ],
+    // 布尔类型属性 (目前Figma较少支持布尔属性的直接绑定)
+    "BOOLEAN": [],
+    // 颜色类型属性 (应该使用set_node_paints)
+    "COLOR": []
+  };
+  
+  const supportedProperties = compatibility[variableType] || [];
+  
+  if (supportedProperties.includes(property)) {
+    return { compatible: true };
+  }
+  
+  // 提供具体的错误信息
+  if (variableType === "COLOR") {
+    return { 
+      compatible: false, 
+      reason: "Color variables should be bound using set_node_paints tool for fills/strokes" 
+    };
+  }
+  
+  if (variableType === "BOOLEAN") {
+    return { 
+      compatible: false, 
+      reason: "Boolean variables are not commonly supported for direct property binding in Figma" 
+    };
+  }
+  
+  return { 
+    compatible: false, 
+    reason: `${variableType} variables cannot be bound to ${property}. Supported properties for ${variableType}: ${supportedProperties.join(", ")}` 
+  };
 }
 
 // --- setNodePaints: Set fills or strokes on a node ---

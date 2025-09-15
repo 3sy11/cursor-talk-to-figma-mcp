@@ -3090,6 +3090,96 @@ server.tool(
   }
 );
 
+// 通用节点变量绑定工具
+server.tool(
+  "bind_node_variable",
+  "Bind a variable to a node property (excluding paints which should use set_node_paints). Supports properties like cornerRadius, width, height, opacity, rotation, and typography properties.",
+  {
+    nodeId: z.string().describe("The ID of the node to bind the variable to"),
+    property: z.enum([
+      "width", "height", "x", "y",
+      "opacity", "rotation", "cornerRadius",
+      "fontSize", "fontWeight", "lineHeight", "letterSpacing", 
+      "paragraphSpacing", "paragraphIndent", "fontFamily", "fontStyle"
+    ]).describe("The property to bind the variable to"),
+    variableId: z.string().describe("The ID of the variable to bind"),
+    modeId: z.string().optional().describe("Optional mode ID for the variable binding")
+  },
+  async ({ nodeId, property, variableId, modeId }) => {
+    try {
+      console.log("Binding variable:", variableId, "to property:", property, "on node:", nodeId);
+      
+      const result = await sendCommandToFigma("bind_node_variable", {
+        nodeId,
+        property,
+        variableId,
+        modeId
+      });
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result)
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error binding variable to node property: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ]
+      };
+    }
+  }
+);
+
+// 解除节点变量绑定工具
+server.tool(
+  "unbind_node_variable", 
+  "Remove a variable binding from a node property.",
+  {
+    nodeId: z.string().describe("The ID of the node to unbind the variable from"),
+    property: z.enum([
+      "width", "height", "x", "y",
+      "opacity", "rotation", "cornerRadius", 
+      "fontSize", "fontWeight", "lineHeight", "letterSpacing",
+      "paragraphSpacing", "paragraphIndent", "fontFamily", "fontStyle"
+    ]).describe("The property to unbind the variable from")
+  },
+  async ({ nodeId, property }) => {
+    try {
+      console.log("Unbinding variable from property:", property, "on node:", nodeId);
+      
+      const result = await sendCommandToFigma("unbind_node_variable", {
+        nodeId,
+        property
+      });
+
+      return {
+        content: [
+          {
+            type: "text", 
+            text: JSON.stringify(result)
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error unbinding variable from node property: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ]
+      };
+    }
+  }
+);
+
 server.tool(
   "list_collections",
   "List all variable collections in the Figma document. Returns an array of collection objects, including their id, name, and type.",
@@ -3174,6 +3264,8 @@ type FigmaCommand =
   | "set_float_variable" 
   | "set_string_variable"
   | "set_boolean_variable"
+  | "bind_node_variable"
+  | "unbind_node_variable"
   | "set_focus"
   | "set_selections";
 
@@ -3395,6 +3487,20 @@ type CommandParams = {
     modeId?: string;
     value: boolean;
     variableReferenceId?: string;
+  };
+  bind_node_variable: {
+    nodeId: string;
+    property: "width" | "height" | "x" | "y" | "opacity" | "rotation" | "cornerRadius" | 
+              "fontSize" | "fontWeight" | "lineHeight" | "letterSpacing" | 
+              "paragraphSpacing" | "paragraphIndent" | "fontFamily" | "fontStyle";
+    variableId: string;
+    modeId?: string;
+  };
+  unbind_node_variable: {
+    nodeId: string;
+    property: "width" | "height" | "x" | "y" | "opacity" | "rotation" | "cornerRadius" |
+              "fontSize" | "fontWeight" | "lineHeight" | "letterSpacing" |
+              "paragraphSpacing" | "paragraphIndent" | "fontFamily" | "fontStyle";
   };
 };
 
