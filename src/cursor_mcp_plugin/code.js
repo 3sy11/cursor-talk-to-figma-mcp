@@ -253,6 +253,10 @@ async function handleCommand(command, params) {
       return await bindNodeVariable(params);
     case "unbind_node_variable":
       return await unbindNodeVariable(params);
+    case "bind_padding_variable":
+      return await bindPaddingVariable(params);
+    case "unbind_padding_variable":
+      return await unbindPaddingVariable(params);
     case "list_collections":
       return await listCollections();
     case "set_node_paints":
@@ -1873,6 +1877,150 @@ async function unbindNodeVariable(params) {
   } catch (error) {
     console.error("Error in unbindNodeVariable:", error);
     throw new Error(`Failed to unbind variable: ${error.message}`);
+  }
+}
+
+// --- 专门的Padding变量绑定函数 ---
+async function bindPaddingVariable(params) {
+  const { nodeId, paddingProperty, variableId, modeId } = params || {};
+  
+  // 参数验证
+  if (!nodeId) {
+    throw new Error("Missing nodeId parameter");
+  }
+  if (!paddingProperty) {
+    throw new Error("Missing paddingProperty parameter");
+  }
+  if (!variableId) {
+    throw new Error("Missing variableId parameter");
+  }
+  
+  // 检查Variables API可用性
+  if (!figma.variables || !figma.variables.getVariableByIdAsync) {
+    throw new Error("Figma Variables API not available");
+  }
+  
+  try {
+    // 获取节点
+    const node = await figma.getNodeByIdAsync(nodeId);
+    if (!node) {
+      throw new Error(`Node not found: ${nodeId}`);
+    }
+    
+    // 验证节点类型是否支持padding
+    if (node.type !== "FRAME" && node.type !== "COMPONENT" && 
+        node.type !== "COMPONENT_SET" && node.type !== "INSTANCE") {
+      throw new Error(`Padding properties can only be applied to FRAME, COMPONENT, COMPONENT_SET, or INSTANCE nodes. Node ${nodeId} is type: ${node.type}`);
+    }
+    
+    // 验证节点是否启用了auto-layout
+    if (node.layoutMode === "NONE") {
+      throw new Error(`Padding properties can only be applied to auto-layout frames. Node ${nodeId} has layoutMode: NONE`);
+    }
+    
+    // 获取变量
+    const variable = await figma.variables.getVariableByIdAsync(variableId);
+    if (!variable) {
+      throw new Error(`Variable not found: ${variableId}`);
+    }
+    
+    // 验证变量类型必须是FLOAT
+    if (variable.resolvedType !== "FLOAT") {
+      throw new Error(`Variable ${variableId} must be a FLOAT variable for padding binding. Current type: ${variable.resolvedType}`);
+    }
+    
+    // 验证节点是否支持该padding属性
+    if (!(paddingProperty in node)) {
+      throw new Error(`Node ${nodeId} (type: ${node.type}) does not support property: ${paddingProperty}`);
+    }
+    
+    // 使用Figma官方API绑定变量
+    console.log(`Binding padding variable ${variableId} (${variable.resolvedType}) to ${paddingProperty} on node ${nodeId} (${node.type})`);
+    
+    // 执行绑定
+    node.setBoundVariable(paddingProperty, variable);
+    
+    console.log(`Successfully bound padding variable ${variableId} to ${paddingProperty} on node ${nodeId}`);
+    
+    return { 
+      success: true, 
+      nodeId, 
+      paddingProperty, 
+      variableId,
+      nodeName: node.name,
+      nodeType: node.type,
+      variableName: variable.name,
+      variableType: variable.resolvedType,
+      message: `Successfully bound padding variable ${variable.name} to ${paddingProperty}`
+    };
+    
+  } catch (error) {
+    console.error("Error in bindPaddingVariable:", error);
+    throw new Error(`Failed to bind padding variable: ${error.message}`);
+  }
+}
+
+// --- 解除Padding变量绑定函数 ---
+async function unbindPaddingVariable(params) {
+  const { nodeId, paddingProperty } = params || {};
+  
+  // 参数验证
+  if (!nodeId) {
+    throw new Error("Missing nodeId parameter");
+  }
+  if (!paddingProperty) {
+    throw new Error("Missing paddingProperty parameter");
+  }
+  
+  try {
+    // 获取节点
+    const node = await figma.getNodeByIdAsync(nodeId);
+    if (!node) {
+      throw new Error(`Node not found: ${nodeId}`);
+    }
+    
+    // 验证节点类型是否支持padding
+    if (node.type !== "FRAME" && node.type !== "COMPONENT" && 
+        node.type !== "COMPONENT_SET" && node.type !== "INSTANCE") {
+      throw new Error(`Padding properties can only be applied to FRAME, COMPONENT, COMPONENT_SET, or INSTANCE nodes. Node ${nodeId} is type: ${node.type}`);
+    }
+    
+    // 验证节点是否支持该padding属性
+    if (!(paddingProperty in node)) {
+      throw new Error(`Node ${nodeId} (type: ${node.type}) does not support property: ${paddingProperty}`);
+    }
+    
+    // 检查是否有绑定的变量
+    const boundVariables = node.boundVariables;
+    if (!boundVariables || !boundVariables[paddingProperty]) {
+      return {
+        success: true,
+        message: `No variable binding found for padding property ${paddingProperty} on node ${nodeId}`,
+        nodeId,
+        paddingProperty,
+        nodeName: node.name,
+        nodeType: node.type
+      };
+    }
+    
+    // 解除绑定（设置为null）
+    console.log(`Unbinding padding variable from ${paddingProperty} on node ${nodeId}`);
+    node.setBoundVariable(paddingProperty, null);
+    
+    console.log(`Successfully unbound padding variable from ${paddingProperty} on node ${nodeId}`);
+    
+    return { 
+      success: true, 
+      nodeId, 
+      paddingProperty,
+      nodeName: node.name,
+      nodeType: node.type,
+      message: `Unbound padding variable from ${paddingProperty}`
+    };
+    
+  } catch (error) {
+    console.error("Error in unbindPaddingVariable:", error);
+    throw new Error(`Failed to unbind padding variable: ${error.message}`);
   }
 }
 

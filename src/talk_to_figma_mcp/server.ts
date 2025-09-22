@@ -3180,6 +3180,86 @@ server.tool(
   }
 );
 
+// 专门的Padding变量绑定工具
+server.tool(
+  "bind_padding_variable",
+  "Bind a FLOAT variable to a padding property of an auto-layout frame. This tool is specifically designed for padding variable binding with proper validation.",
+  {
+    nodeId: z.string().describe("The ID of the frame/component/instance to bind the padding variable to"),
+    paddingProperty: z.enum(["paddingTop", "paddingRight", "paddingBottom", "paddingLeft"]).describe("The specific padding property to bind"),
+    variableId: z.string().describe("The ID of the FLOAT variable to bind to the padding property"),
+    modeId: z.string().optional().describe("Optional mode ID for the variable binding")
+  },
+  async ({ nodeId, paddingProperty, variableId, modeId }) => {
+    try {
+      console.log("Binding padding variable:", variableId, "to property:", paddingProperty, "on node:", nodeId);
+      
+      const result = await sendCommandToFigma("bind_padding_variable", {
+        nodeId,
+        paddingProperty,
+        variableId,
+        modeId
+      });
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result)
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error binding padding variable: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ]
+      };
+    }
+  }
+);
+
+// 解除Padding变量绑定工具
+server.tool(
+  "unbind_padding_variable",
+  "Remove a variable binding from a padding property of an auto-layout frame.",
+  {
+    nodeId: z.string().describe("The ID of the frame/component/instance to unbind the padding variable from"),
+    paddingProperty: z.enum(["paddingTop", "paddingRight", "paddingBottom", "paddingLeft"]).describe("The specific padding property to unbind")
+  },
+  async ({ nodeId, paddingProperty }) => {
+    try {
+      console.log("Unbinding padding variable from property:", paddingProperty, "on node:", nodeId);
+      
+      const result = await sendCommandToFigma("unbind_padding_variable", {
+        nodeId,
+        paddingProperty
+      });
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result)
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error unbinding padding variable: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ]
+      };
+    }
+  }
+);
+
 server.tool(
   "list_collections",
   "List all variable collections in the Figma document. Returns an array of collection objects, including their id, name, and type.",
@@ -3266,6 +3346,8 @@ type FigmaCommand =
   | "set_boolean_variable"
   | "bind_node_variable"
   | "unbind_node_variable"
+  | "bind_padding_variable"
+  | "unbind_padding_variable"
   | "set_focus"
   | "set_selections";
 
@@ -3501,6 +3583,16 @@ type CommandParams = {
     property: "width" | "height" | "x" | "y" | "opacity" | "rotation" | "cornerRadius" |
               "fontSize" | "fontWeight" | "lineHeight" | "letterSpacing" |
               "paragraphSpacing" | "paragraphIndent" | "fontFamily" | "fontStyle";
+  };
+  bind_padding_variable: {
+    nodeId: string;
+    paddingProperty: "paddingTop" | "paddingRight" | "paddingBottom" | "paddingLeft";
+    variableId: string;
+    modeId?: string;
+  };
+  unbind_padding_variable: {
+    nodeId: string;
+    paddingProperty: "paddingTop" | "paddingRight" | "paddingBottom" | "paddingLeft";
   };
 };
 
