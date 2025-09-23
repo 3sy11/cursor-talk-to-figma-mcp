@@ -825,6 +825,195 @@ server.tool(
   }
 );
 
+// Hierarchy Management Tools
+server.tool(
+  "bring_to_front",
+  "Bring a node to the front (top of the layer stack) in its parent container.",
+  {
+    nodeId: z.string().describe("The ID of the node to bring to front"),
+  },
+  async ({ nodeId }: any) => {
+    try {
+      const result = await sendCommandToFigma("bring_to_front", { nodeId });
+      const typedResult = result as { name: string };
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Brought node "${typedResult.name}" to front`,
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error bringing node to front: ${error instanceof Error ? error.message : String(error)}`,
+          },
+        ],
+      };
+    }
+  }
+);
+
+server.tool(
+  "send_to_back",
+  "Send a node to the back (bottom of the layer stack) in its parent container.",
+  {
+    nodeId: z.string().describe("The ID of the node to send to back"),
+  },
+  async ({ nodeId }: any) => {
+    try {
+      const result = await sendCommandToFigma("send_to_back", { nodeId });
+      const typedResult = result as { name: string };
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Sent node "${typedResult.name}" to back`,
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error sending node to back: ${error instanceof Error ? error.message : String(error)}`,
+          },
+        ],
+      };
+    }
+  }
+);
+
+server.tool(
+  "bring_forward",
+  "Bring a node forward by one layer in its parent container.",
+  {
+    nodeId: z.string().describe("The ID of the node to bring forward"),
+  },
+  async ({ nodeId }: any) => {
+    try {
+      const result = await sendCommandToFigma("bring_forward", { nodeId });
+      const typedResult = result as { name: string };
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Brought node "${typedResult.name}" forward`,
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error bringing node forward: ${error instanceof Error ? error.message : String(error)}`,
+          },
+        ],
+      };
+    }
+  }
+);
+
+server.tool(
+  "send_backward",
+  "Send a node backward by one layer in its parent container.",
+  {
+    nodeId: z.string().describe("The ID of the node to send backward"),
+  },
+  async ({ nodeId }: any) => {
+    try {
+      const result = await sendCommandToFigma("send_backward", { nodeId });
+      const typedResult = result as { name: string };
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Sent node "${typedResult.name}" backward`,
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error sending node backward: ${error instanceof Error ? error.message : String(error)}`,
+          },
+        ],
+      };
+    }
+  }
+);
+
+server.tool(
+  "change_parent",
+  "Change the parent of a node to a different parent container.",
+  {
+    nodeId: z.string().describe("The ID of the node to move"),
+    newParentId: z.string().describe("The ID of the new parent container"),
+  },
+  async ({ nodeId, newParentId }: any) => {
+    try {
+      const result = await sendCommandToFigma("change_parent", { nodeId, newParentId });
+      const typedResult = result as { name: string; newParentName: string };
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Moved node "${typedResult.name}" to parent "${typedResult.newParentName}"`,
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error changing parent: ${error instanceof Error ? error.message : String(error)}`,
+          },
+        ],
+      };
+    }
+  }
+);
+
+server.tool(
+  "insert_at_index",
+  "Insert a node at a specific index position within its parent container.",
+  {
+    nodeId: z.string().describe("The ID of the node to move"),
+    index: z.number().describe("The index position to insert the node at (0-based)"),
+  },
+  async ({ nodeId, index }: any) => {
+    try {
+      const result = await sendCommandToFigma("insert_at_index", { nodeId, index });
+      const typedResult = result as { name: string; index: number };
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Moved node "${typedResult.name}" to index position ${typedResult.index}`,
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error inserting at index: ${error instanceof Error ? error.message : String(error)}`,
+          },
+        ],
+      };
+    }
+  }
+);
+
 // Clone Node Tool
 server.tool(
   "clone_node",
@@ -3260,6 +3449,116 @@ server.tool(
   }
 );
 
+// 获取所有页面工具
+server.tool(
+  "get_all_pages",
+  "Get all pages in the current Figma document. Returns a list of all pages with their IDs, names, and child counts.",
+  {},
+  async () => {
+    try {
+      console.log("Getting all pages in the document");
+      
+      const result = await sendCommandToFigma("get_all_pages", {});
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result)
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error getting all pages: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ]
+      };
+    }
+  }
+);
+
+// 切换到指定页面工具
+server.tool(
+  "switch_to_page",
+  "Switch the current page to a specified page by ID. This changes the active page in Figma.",
+  {
+    pageId: z.string().describe("The ID of the page to switch to")
+  },
+  async ({ pageId }) => {
+    try {
+      console.log("Switching to page:", pageId);
+      
+      const result = await sendCommandToFigma("switch_to_page", {
+        pageId
+      });
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result)
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error switching to page: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ]
+      };
+    }
+  }
+);
+
+// 克隆节点到指定页面工具
+server.tool(
+  "clone_node_to_page",
+  "Clone a node from the current page to a specified target page. This enables cross-page component copying.",
+  {
+    nodeId: z.string().describe("The ID of the node to clone"),
+    targetPageId: z.string().describe("The ID of the target page to clone the node to"),
+    x: z.number().optional().describe("New X position for the cloned node"),
+    y: z.number().optional().describe("New Y position for the cloned node")
+  },
+  async ({ nodeId, targetPageId, x, y }) => {
+    try {
+      console.log("Cloning node:", nodeId, "to page:", targetPageId);
+      
+      const result = await sendCommandToFigma("clone_node_to_page", {
+        nodeId,
+        targetPageId,
+        x,
+        y
+      });
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result)
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error cloning node to page: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ]
+      };
+    }
+  }
+);
+
 server.tool(
   "list_collections",
   "List all variable collections in the Figma document. Returns an array of collection objects, including their id, name, and type.",
@@ -3348,6 +3647,15 @@ type FigmaCommand =
   | "unbind_node_variable"
   | "bind_padding_variable"
   | "unbind_padding_variable"
+  | "get_all_pages"
+  | "switch_to_page"
+  | "clone_node_to_page"
+  | "bring_to_front"
+  | "send_to_back"
+  | "bring_forward"
+  | "send_backward"
+  | "change_parent"
+  | "insert_at_index"
   | "set_focus"
   | "set_selections";
 
@@ -3593,6 +3901,36 @@ type CommandParams = {
   unbind_padding_variable: {
     nodeId: string;
     paddingProperty: "paddingTop" | "paddingRight" | "paddingBottom" | "paddingLeft";
+  };
+  get_all_pages: Record<string, never>;
+  switch_to_page: {
+    pageId: string;
+  };
+  clone_node_to_page: {
+    nodeId: string;
+    targetPageId: string;
+    x?: number;
+    y?: number;
+  };
+  bring_to_front: {
+    nodeId: string;
+  };
+  send_to_back: {
+    nodeId: string;
+  };
+  bring_forward: {
+    nodeId: string;
+  };
+  send_backward: {
+    nodeId: string;
+  };
+  change_parent: {
+    nodeId: string;
+    newParentId: string;
+  };
+  insert_at_index: {
+    nodeId: string;
+    index: number;
   };
 };
 

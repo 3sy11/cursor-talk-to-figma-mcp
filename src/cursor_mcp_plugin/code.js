@@ -257,6 +257,24 @@ async function handleCommand(command, params) {
       return await bindPaddingVariable(params);
     case "unbind_padding_variable":
       return await unbindPaddingVariable(params);
+    case "get_all_pages":
+      return await getAllPages();
+    case "switch_to_page":
+      return await switchToPage(params);
+    case "clone_node_to_page":
+      return await cloneNodeToPage(params);
+    case "bring_to_front":
+      return await bringToFront(params);
+    case "send_to_back":
+      return await sendToBack(params);
+    case "bring_forward":
+      return await bringForward(params);
+    case "send_backward":
+      return await sendBackward(params);
+    case "change_parent":
+      return await changeParent(params);
+    case "insert_at_index":
+      return await insertAtIndex(params);
     case "list_collections":
       return await listCollections();
     case "set_node_paints":
@@ -2021,6 +2039,443 @@ async function unbindPaddingVariable(params) {
   } catch (error) {
     console.error("Error in unbindPaddingVariable:", error);
     throw new Error(`Failed to unbind padding variable: ${error.message}`);
+  }
+}
+
+// --- 跨页面操作函数 ---
+
+// 获取所有页面
+async function getAllPages() {
+  try {
+    // 确保所有页面都已加载
+    await figma.loadAllPagesAsync();
+    
+    // 获取所有页面信息
+    const pages = figma.root.children.map(page => ({
+      id: page.id,
+      name: page.name,
+      childCount: page.children.length,
+      isCurrentPage: page.id === figma.currentPage.id
+    }));
+    
+    return {
+      success: true,
+      count: pages.length,
+      pages: pages,
+      currentPage: {
+        id: figma.currentPage.id,
+        name: figma.currentPage.name
+      }
+    };
+  } catch (error) {
+    console.error("Error in getAllPages:", error);
+    throw new Error(`Failed to get all pages: ${error.message}`);
+  }
+}
+
+// 切换到指定页面
+async function switchToPage(params) {
+  const { pageId } = params || {};
+  
+  if (!pageId) {
+    throw new Error("Missing pageId parameter");
+  }
+  
+  try {
+    // 确保所有页面都已加载
+    await figma.loadAllPagesAsync();
+    
+    // 查找目标页面
+    const targetPage = figma.root.children.find(page => page.id === pageId);
+    if (!targetPage) {
+      throw new Error(`Page not found: ${pageId}`);
+    }
+    
+    // 切换到目标页面
+    figma.currentPage = targetPage;
+    
+    console.log(`Successfully switched to page: ${targetPage.name} (${pageId})`);
+    
+    return {
+      success: true,
+      pageId: targetPage.id,
+      pageName: targetPage.name,
+      childCount: targetPage.children.length,
+      message: `Switched to page "${targetPage.name}"`
+    };
+  } catch (error) {
+    console.error("Error in switchToPage:", error);
+    throw new Error(`Failed to switch to page: ${error.message}`);
+  }
+}
+
+// 层级管理函数
+async function bringToFront(params) {
+  const { nodeId } = params || {};
+  
+  if (!nodeId) {
+    throw new Error("Missing nodeId parameter");
+  }
+  
+  try {
+    // 确保所有页面都已加载
+    await figma.loadAllPagesAsync();
+    
+    // 获取节点
+    const node = await figma.getNodeByIdAsync(nodeId);
+    if (!node) {
+      throw new Error(`Node not found: ${nodeId}`);
+    }
+    
+    // 检查节点是否有父节点
+    if (!node.parent) {
+      throw new Error(`Node ${nodeId} has no parent`);
+    }
+    
+    // 将节点移到最前面
+    node.parent.appendChild(node);
+    
+    console.log(`Successfully brought node "${node.name}" to front`);
+    
+    return {
+      success: true,
+      node: {
+        id: node.id,
+        name: node.name,
+        type: node.type
+      },
+      message: `Brought "${node.name}" to front`
+    };
+  } catch (error) {
+    console.error("Error in bringToFront:", error);
+    throw new Error(`Failed to bring node to front: ${error.message}`);
+  }
+}
+
+async function sendToBack(params) {
+  const { nodeId } = params || {};
+  
+  if (!nodeId) {
+    throw new Error("Missing nodeId parameter");
+  }
+  
+  try {
+    // 确保所有页面都已加载
+    await figma.loadAllPagesAsync();
+    
+    // 获取节点
+    const node = await figma.getNodeByIdAsync(nodeId);
+    if (!node) {
+      throw new Error(`Node not found: ${nodeId}`);
+    }
+    
+    // 检查节点是否有父节点
+    if (!node.parent) {
+      throw new Error(`Node ${nodeId} has no parent`);
+    }
+    
+    // 将节点移到最后面（插入到第一个位置）
+    node.parent.insertChild(0, node);
+    
+    console.log(`Successfully sent node "${node.name}" to back`);
+    
+    return {
+      success: true,
+      node: {
+        id: node.id,
+        name: node.name,
+        type: node.type
+      },
+      message: `Sent "${node.name}" to back`
+    };
+  } catch (error) {
+    console.error("Error in sendToBack:", error);
+    throw new Error(`Failed to send node to back: ${error.message}`);
+  }
+}
+
+async function bringForward(params) {
+  const { nodeId } = params || {};
+  
+  if (!nodeId) {
+    throw new Error("Missing nodeId parameter");
+  }
+  
+  try {
+    // 确保所有页面都已加载
+    await figma.loadAllPagesAsync();
+    
+    // 获取节点
+    const node = await figma.getNodeByIdAsync(nodeId);
+    if (!node) {
+      throw new Error(`Node not found: ${nodeId}`);
+    }
+    
+    // 检查节点是否有父节点
+    if (!node.parent) {
+      throw new Error(`Node ${nodeId} has no parent`);
+    }
+    
+    // 获取当前节点在父节点中的索引
+    const currentIndex = node.parent.children.indexOf(node);
+    if (currentIndex === -1) {
+      throw new Error(`Node ${nodeId} not found in parent's children`);
+    }
+    
+    // 如果已经是最后一个，则移到最前面
+    if (currentIndex === node.parent.children.length - 1) {
+      node.parent.appendChild(node);
+    } else {
+      // 否则移到下一个位置
+      node.parent.insertChild(currentIndex + 2, node);
+    }
+    
+    console.log(`Successfully brought node "${node.name}" forward`);
+    
+    return {
+      success: true,
+      node: {
+        id: node.id,
+        name: node.name,
+        type: node.type
+      },
+      message: `Brought "${node.name}" forward`
+    };
+  } catch (error) {
+    console.error("Error in bringForward:", error);
+    throw new Error(`Failed to bring node forward: ${error.message}`);
+  }
+}
+
+async function sendBackward(params) {
+  const { nodeId } = params || {};
+  
+  if (!nodeId) {
+    throw new Error("Missing nodeId parameter");
+  }
+  
+  try {
+    // 确保所有页面都已加载
+    await figma.loadAllPagesAsync();
+    
+    // 获取节点
+    const node = await figma.getNodeByIdAsync(nodeId);
+    if (!node) {
+      throw new Error(`Node not found: ${nodeId}`);
+    }
+    
+    // 检查节点是否有父节点
+    if (!node.parent) {
+      throw new Error(`Node ${nodeId} has no parent`);
+    }
+    
+    // 获取当前节点在父节点中的索引
+    const currentIndex = node.parent.children.indexOf(node);
+    if (currentIndex === -1) {
+      throw new Error(`Node ${nodeId} not found in parent's children`);
+    }
+    
+    // 如果已经是第一个，则移到最后面
+    if (currentIndex === 0) {
+      node.parent.appendChild(node);
+    } else {
+      // 否则移到上一个位置
+      node.parent.insertChild(currentIndex - 1, node);
+    }
+    
+    console.log(`Successfully sent node "${node.name}" backward`);
+    
+    return {
+      success: true,
+      node: {
+        id: node.id,
+        name: node.name,
+        type: node.type
+      },
+      message: `Sent "${node.name}" backward`
+    };
+  } catch (error) {
+    console.error("Error in sendBackward:", error);
+    throw new Error(`Failed to send node backward: ${error.message}`);
+  }
+}
+
+async function changeParent(params) {
+  const { nodeId, newParentId } = params || {};
+  
+  if (!nodeId) {
+    throw new Error("Missing nodeId parameter");
+  }
+  if (!newParentId) {
+    throw new Error("Missing newParentId parameter");
+  }
+  
+  try {
+    // 确保所有页面都已加载
+    await figma.loadAllPagesAsync();
+    
+    // 获取源节点
+    const node = await figma.getNodeByIdAsync(nodeId);
+    if (!node) {
+      throw new Error(`Source node not found: ${nodeId}`);
+    }
+    
+    // 获取新的父节点
+    const newParent = await figma.getNodeByIdAsync(newParentId);
+    if (!newParent) {
+      throw new Error(`New parent node not found: ${newParentId}`);
+    }
+    
+    // 检查新父节点是否支持子节点
+    if (!("appendChild" in newParent)) {
+      throw new Error(`New parent node does not support children: ${newParentId}`);
+    }
+    
+    // 将节点移动到新的父节点
+    newParent.appendChild(node);
+    
+    console.log(`Successfully moved node "${node.name}" to parent "${newParent.name}"`);
+    
+    return {
+      success: true,
+      node: {
+        id: node.id,
+        name: node.name,
+        type: node.type
+      },
+      newParent: {
+        id: newParent.id,
+        name: newParent.name,
+        type: newParent.type
+      },
+      message: `Moved "${node.name}" to parent "${newParent.name}"`
+    };
+  } catch (error) {
+    console.error("Error in changeParent:", error);
+    throw new Error(`Failed to change parent: ${error.message}`);
+  }
+}
+
+async function insertAtIndex(params) {
+  const { nodeId, index } = params || {};
+  
+  if (!nodeId) {
+    throw new Error("Missing nodeId parameter");
+  }
+  if (index === undefined || index < 0) {
+    throw new Error("Missing or invalid index parameter");
+  }
+  
+  try {
+    // 确保所有页面都已加载
+    await figma.loadAllPagesAsync();
+    
+    // 获取节点
+    const node = await figma.getNodeByIdAsync(nodeId);
+    if (!node) {
+      throw new Error(`Node not found: ${nodeId}`);
+    }
+    
+    // 检查节点是否有父节点
+    if (!node.parent) {
+      throw new Error(`Node ${nodeId} has no parent`);
+    }
+    
+    // 检查索引是否超出范围
+    if (index > node.parent.children.length) {
+      throw new Error(`Index ${index} is out of range. Parent has ${node.parent.children.length} children`);
+    }
+    
+    // 将节点插入到指定位置
+    node.parent.insertChild(index, node);
+    
+    console.log(`Successfully moved node "${node.name}" to index ${index}`);
+    
+    return {
+      success: true,
+      node: {
+        id: node.id,
+        name: node.name,
+        type: node.type
+      },
+      index: index,
+      message: `Moved "${node.name}" to index position ${index}`
+    };
+  } catch (error) {
+    console.error("Error in insertAtIndex:", error);
+    throw new Error(`Failed to insert at index: ${error.message}`);
+  }
+}
+
+// 克隆节点到指定页面
+async function cloneNodeToPage(params) {
+  const { nodeId, targetPageId, x, y } = params || {};
+  
+  if (!nodeId) {
+    throw new Error("Missing nodeId parameter");
+  }
+  if (!targetPageId) {
+    throw new Error("Missing targetPageId parameter");
+  }
+  
+  try {
+    // 确保所有页面都已加载
+    await figma.loadAllPagesAsync();
+    
+    // 获取源节点
+    const sourceNode = await figma.getNodeByIdAsync(nodeId);
+    if (!sourceNode) {
+      throw new Error(`Source node not found: ${nodeId}`);
+    }
+    
+    // 获取目标页面
+    const targetPage = figma.root.children.find(page => page.id === targetPageId);
+    if (!targetPage) {
+      throw new Error(`Target page not found: ${targetPageId}`);
+    }
+    
+    // 克隆节点
+    const clonedNode = sourceNode.clone();
+    
+    // 设置位置
+    if (x !== undefined && y !== undefined) {
+      if (!("x" in clonedNode) || !("y" in clonedNode)) {
+        throw new Error(`Cloned node does not support position: ${nodeId}`);
+      }
+      clonedNode.x = x;
+      clonedNode.y = y;
+    }
+    
+    // 添加到目标页面
+    targetPage.appendChild(clonedNode);
+    
+    console.log(`Successfully cloned node "${sourceNode.name}" to page "${targetPage.name}"`);
+    
+    return {
+      success: true,
+      sourceNode: {
+        id: sourceNode.id,
+        name: sourceNode.name,
+        type: sourceNode.type
+      },
+      clonedNode: {
+        id: clonedNode.id,
+        name: clonedNode.name,
+        type: clonedNode.type,
+        x: "x" in clonedNode ? clonedNode.x : undefined,
+        y: "y" in clonedNode ? clonedNode.y : undefined,
+        width: "width" in clonedNode ? clonedNode.width : undefined,
+        height: "height" in clonedNode ? clonedNode.height : undefined
+      },
+      targetPage: {
+        id: targetPage.id,
+        name: targetPage.name
+      },
+      message: `Successfully cloned "${sourceNode.name}" to page "${targetPage.name}"`
+    };
+  } catch (error) {
+    console.error("Error in cloneNodeToPage:", error);
+    throw new Error(`Failed to clone node to page: ${error.message}`);
   }
 }
 
