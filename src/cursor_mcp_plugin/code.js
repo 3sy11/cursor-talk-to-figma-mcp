@@ -263,6 +263,8 @@ async function handleCommand(command, params) {
       return await switchToPage(params);
     case "clone_node_to_page":
       return await cloneNodeToPage(params);
+    case "rename_page":
+      return await renamePage(params);
     case "bring_to_front":
       return await bringToFront(params);
     case "send_to_back":
@@ -2106,6 +2108,49 @@ async function switchToPage(params) {
   } catch (error) {
     console.error("Error in switchToPage:", error);
     throw new Error(`Failed to switch to page: ${error.message}`);
+  }
+}
+
+// 重命名页面
+async function renamePage(params) {
+  const { pageId, newName } = params || {};
+  
+  if (!pageId) {
+    throw new Error("Missing pageId parameter");
+  }
+  
+  if (!newName) {
+    throw new Error("Missing newName parameter");
+  }
+  
+  try {
+    // 确保所有页面都已加载
+    await figma.loadAllPagesAsync();
+    
+    // 查找目标页面
+    const targetPage = figma.root.children.find(page => page.id === pageId);
+    if (!targetPage) {
+      throw new Error(`Page not found: ${pageId}`);
+    }
+    
+    // 保存旧名称
+    const oldName = targetPage.name;
+    
+    // 重命名页面
+    targetPage.name = newName;
+    
+    console.log(`Successfully renamed page from "${oldName}" to "${newName}"`);
+    
+    return {
+      success: true,
+      pageId: targetPage.id,
+      oldName: oldName,
+      newName: newName,
+      message: `Page renamed from "${oldName}" to "${newName}"`
+    };
+  } catch (error) {
+    console.error("Error in renamePage:", error);
+    throw new Error(`Failed to rename page: ${error.message}`);
   }
 }
 

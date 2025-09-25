@@ -3559,6 +3559,44 @@ server.tool(
   }
 );
 
+// 重命名页面工具
+server.tool(
+  "rename_page",
+  "Rename a page in the Figma document by providing the page ID and new name.",
+  {
+    pageId: z.string().describe("The ID of the page to rename"),
+    newName: z.string().describe("The new name for the page")
+  },
+  async ({ pageId, newName }) => {
+    try {
+      console.log("Renaming page:", pageId, "to:", newName);
+      
+      const result = await sendCommandToFigma("rename_page", {
+        pageId,
+        newName
+      });
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result)
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error renaming page: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ]
+      };
+    }
+  }
+);
+
 server.tool(
   "list_collections",
   "List all variable collections in the Figma document. Returns an array of collection objects, including their id, name, and type.",
@@ -3650,6 +3688,7 @@ type FigmaCommand =
   | "get_all_pages"
   | "switch_to_page"
   | "clone_node_to_page"
+  | "rename_page"
   | "bring_to_front"
   | "send_to_back"
   | "bring_forward"
@@ -3911,6 +3950,10 @@ type CommandParams = {
     targetPageId: string;
     x?: number;
     y?: number;
+  };
+  rename_page: {
+    pageId: string;
+    newName: string;
   };
   bring_to_front: {
     nodeId: string;
