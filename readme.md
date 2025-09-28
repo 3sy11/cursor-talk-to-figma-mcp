@@ -35,6 +35,36 @@ For detailed release notes and bug fixes, see the [releases](./releases/) folder
 - [2025-09-12](./releases/2025-09-12.md) - Color Variable Serialization Fix & Tool Refactoring
 - [2025-09-15](./releases/2025-09-15.md) - Universal Node Variable Binding Implementation
 - [2025-09-18](./releases/2025-09-18.md) - Specialized Padding Variable Binding Tools
+- [2025-09-28_17-09-08](./releases/2025-09-28_17-09-08.md) - Text Node Layout Sizing Tools Implementation
+
+### Release Log Guidelines
+
+When creating new release logs, follow these guidelines:
+
+1. **File Naming**: Use format `YYYY-MM-DD_HH-MM-SS.md` (e.g., `2025-09-28_17-09-08.md`)
+2. **Header Format**: Use `# Feature Enhancement #XXX:` or `# Bug Fix #XXX:` pattern
+3. **Required Sections**:
+   - **Date/Time**: Current local time in CST
+   - **Type**: Major Feature Enhancement / Bug Fix / Minor Update
+   - **Status**: ✅ Completed / 🔄 In Progress / ❌ Failed
+   - **Feature Description**: Brief overview of the change
+   - **Trigger Requirement**: What prompted this change
+   - **Technical Implementation**: Detailed code changes
+   - **Files Modified**: List of changed files
+   - **Testing & Validation**: What was tested
+   - **Impact**: Summary of benefits and improvements
+
+4. **Content Structure**:
+   - Use clear headings with `###` and `####`
+   - Include code examples with proper syntax highlighting
+   - Provide usage examples and parameter structures
+   - Document any breaking changes or limitations
+   - Include error handling and validation details
+
+5. **Update Process**:
+   - Create new log file in `releases/` folder
+   - Update this README with the new release link
+   - Use descriptive link text that summarizes the change
 
 ## Contributing
 

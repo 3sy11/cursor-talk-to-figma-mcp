@@ -3585,11 +3585,66 @@ server.tool(
         ]
       };
     } catch (error) {
+    }
+  }
+);
+
+// 文本节点布局大小设置工具
+server.tool(
+  "text_layout_sizing",
+  `Set layout sizing properties for TEXT nodes in Figma. This tool allows you to control how text nodes automatically resize based on their content.
+
+**Use Cases:**
+- Auto Height: Set textAutoResize to "HEIGHT" for text that grows vertically with content
+- Auto Width: Set textAutoResize to "WIDTH_AND_HEIGHT" for text that grows in both directions  
+- Fixed Size: Set textAutoResize to "NONE" for text with fixed dimensions
+- Auto-layout Integration: Use layoutSizingHorizontal/layoutSizingVertical for text in auto-layout frames
+- Fill Container: Set layoutSizingHorizontal to "FILL" when text is inside auto-layout parent
+
+**Examples:**
+- Auto height text: {nodeId: "123", textAutoResize: "HEIGHT"}
+- Auto width and height: {nodeId: "123", textAutoResize: "WIDTH_AND_HEIGHT"}
+- Hug content in auto-layout: {nodeId: "123", layoutSizingHorizontal: "HUG", layoutSizingVertical: "HUG"}
+- Fixed size text: {nodeId: "123", textAutoResize: "NONE"}
+- Auto height + Fill width: {nodeId: "123", textAutoResize: "HEIGHT", layoutSizingHorizontal: "FILL"}
+- Fill container in auto-layout: {nodeId: "123", layoutSizingHorizontal: "FILL", layoutSizingVertical: "FILL"}
+
+**Important Notes:**
+- FILL sizing only works when TEXT node is inside an auto-layout parent container
+- Use get_selection or get_node_info to find text node IDs
+- textAutoResize controls the text's own resizing behavior
+- layoutSizingHorizontal/Vertical control sizing within auto-layout containers`,
+  {
+    nodeId: z.string().describe("The ID of the TEXT node to modify. Use get_selection or get_node_info to find text node IDs."),
+    textAutoResize: z.enum(["WIDTH_AND_HEIGHT", "HEIGHT", "NONE"]).optional().describe("Text auto-resize behavior: WIDTH_AND_HEIGHT (grows in both directions), HEIGHT (grows vertically only), NONE (fixed size). Use HEIGHT for auto-height text."),
+    layoutSizingHorizontal: z.enum(["FIXED", "HUG", "FILL"]).optional().describe("Horizontal sizing in auto-layout: FIXED (fixed width), HUG (width matches content), FILL (fills parent width). FILL only works when text is inside an auto-layout parent."),
+    layoutSizingVertical: z.enum(["FIXED", "HUG", "FILL"]).optional().describe("Vertical sizing in auto-layout: FIXED (fixed height), HUG (height matches content), FILL (fills parent height). FILL only works when text is inside an auto-layout parent.")
+  },
+  async ({ nodeId, textAutoResize, layoutSizingHorizontal, layoutSizingVertical }) => {
+    try {
+      console.log("Setting text layout sizing for node:", nodeId);
+      
+      const result = await sendCommandToFigma("text_layout_sizing", {
+        nodeId,
+        textAutoResize,
+        layoutSizingHorizontal,
+        layoutSizingVertical
+      });
+
       return {
         content: [
           {
             type: "text",
-            text: `Error renaming page: ${error instanceof Error ? error.message : String(error)}`
+            text: JSON.stringify(result)
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error setting text layout sizing: ${error instanceof Error ? error.message : String(error)}`
           }
         ]
       };
@@ -3689,6 +3744,7 @@ type FigmaCommand =
   | "switch_to_page"
   | "clone_node_to_page"
   | "rename_page"
+  | "text_layout_sizing"
   | "bring_to_front"
   | "send_to_back"
   | "bring_forward"
@@ -3954,6 +4010,12 @@ type CommandParams = {
   rename_page: {
     pageId: string;
     newName: string;
+  };
+  text_layout_sizing: {
+    nodeId: string;
+    textAutoResize?: "WIDTH_AND_HEIGHT" | "HEIGHT" | "NONE";
+    layoutSizingHorizontal?: "FIXED" | "HUG";
+    layoutSizingVertical?: "FIXED" | "HUG";
   };
   bring_to_front: {
     nodeId: string;

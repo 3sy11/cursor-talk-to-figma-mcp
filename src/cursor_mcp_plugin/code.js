@@ -263,9 +263,11 @@ async function handleCommand(command, params) {
       return await switchToPage(params);
     case "clone_node_to_page":
       return await cloneNodeToPage(params);
-    case "rename_page":
-      return await renamePage(params);
-    case "bring_to_front":
+        case "rename_page":
+          return await renamePage(params);
+        case "text_layout_sizing":
+          return await setTextLayoutSizing(params);
+        case "bring_to_front":
       return await bringToFront(params);
     case "send_to_back":
       return await sendToBack(params);
@@ -2152,6 +2154,82 @@ async function renamePage(params) {
     console.error("Error in renamePage:", error);
     throw new Error(`Failed to rename page: ${error.message}`);
   }
+}
+
+// 设置文本节点的布局大小
+async function setTextLayoutSizing(params) {
+  const { nodeId, layoutSizingHorizontal, layoutSizingVertical, textAutoResize } = params || {};
+
+  if (!nodeId) {
+    throw new Error("Missing nodeId parameter");
+  }
+
+  // 获取目标节点
+  const node = await figma.getNodeByIdAsync(nodeId);
+  if (!node) {
+    throw new Error(`Node with ID ${nodeId} not found`);
+  }
+
+  // 检查节点类型是否为TEXT
+  if (node.type !== "TEXT") {
+    throw new Error(`Node type ${node.type} is not supported. This tool only supports TEXT nodes`);
+  }
+
+  const results = {};
+
+  // 设置textAutoResize属性
+  if (textAutoResize !== undefined) {
+    if (!["WIDTH_AND_HEIGHT", "HEIGHT", "NONE"].includes(textAutoResize)) {
+      throw new Error("Invalid textAutoResize value. Must be one of: WIDTH_AND_HEIGHT, HEIGHT, NONE");
+    }
+    node.textAutoResize = textAutoResize;
+    results.textAutoResize = textAutoResize;
+  }
+
+  // 设置layoutSizingHorizontal属性
+  if (layoutSizingHorizontal !== undefined) {
+    if (!["FIXED", "HUG", "FILL"].includes(layoutSizingHorizontal)) {
+      throw new Error("Invalid layoutSizingHorizontal value for TEXT node. Must be one of: FIXED, HUG, FILL");
+    }
+    
+    // 检查FILL模式的条件
+    if (layoutSizingHorizontal === "FILL") {
+      if (!node.parent || node.parent.layoutMode === "NONE") {
+        throw new Error("FILL sizing is only valid when TEXT node is inside an auto-layout parent container");
+      }
+    }
+    
+    node.layoutSizingHorizontal = layoutSizingHorizontal;
+    results.layoutSizingHorizontal = layoutSizingHorizontal;
+  }
+
+  // 设置layoutSizingVertical属性
+  if (layoutSizingVertical !== undefined) {
+    if (!["FIXED", "HUG", "FILL"].includes(layoutSizingVertical)) {
+      throw new Error("Invalid layoutSizingVertical value for TEXT node. Must be one of: FIXED, HUG, FILL");
+    }
+    
+    // 检查FILL模式的条件
+    if (layoutSizingVertical === "FILL") {
+      if (!node.parent || node.parent.layoutMode === "NONE") {
+        throw new Error("FILL sizing is only valid when TEXT node is inside an auto-layout parent container");
+      }
+    }
+    
+    node.layoutSizingVertical = layoutSizingVertical;
+    results.layoutSizingVertical = layoutSizingVertical;
+  }
+
+  return {
+    id: node.id,
+    name: node.name,
+    type: node.type,
+    textAutoResize: node.textAutoResize,
+    layoutSizingHorizontal: node.layoutSizingHorizontal,
+    layoutSizingVertical: node.layoutSizingVertical,
+    results: results,
+    message: `Successfully updated TEXT node layout sizing properties`
+  };
 }
 
 // 层级管理函数
